@@ -142,5 +142,5 @@ gen_group
 gen_instances
 ) > /etc/keepalived/keepalived.conf
 
-systemctl start keepalived
+systemctl enable --now keepalived
 
