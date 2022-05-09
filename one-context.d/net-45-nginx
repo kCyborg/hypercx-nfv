@@ -21,7 +21,7 @@ backend="$L7_BACKENDS"
 VMID="$VMID"
 
 start_nginx () {
-    systemctl start nginx
+    systemctl enable --now nginx
 }
 
 stop_nginx () {
