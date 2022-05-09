@@ -2,7 +2,7 @@
 
 start_haproxy()
 {
-    systemctl start haproxy
+    systemctl enable --now haproxy
 }
 
 stop_haproxy()
