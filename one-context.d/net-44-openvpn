@@ -2,7 +2,7 @@
 
 start_openvpn()
 {
-    systemctl start openvpn@server
+    systemctl enable --now openvpn@server
 }
 
 stop_openvpn()
