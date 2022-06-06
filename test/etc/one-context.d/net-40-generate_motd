@@ -10,3 +10,77 @@ cat > /etc/motd <<EOT
 
 VERSION: 2.2.1
 EOT
+
+source /var/lib/./onegate.sh
+
+vpn_credentials="$VPN_CREDENTIALS"
+
+for credential in $(echo $vpn_credentials); do
+    user=$(echo $credential | cut -d ':' -f 1)
+    pass=$(echo $credential | cut -d ':' -f 2 | base64)
+    pass_encoded=$(echo $credential | cut -d ':' -f 2 | base64)
+    echo "$user" > /opt/openvpn_credentials
+    echo "$pass" >> /opt/openvpn_credentials
+    echo "$pass_encoded" >> /opt/openvpn_credentials
+done
+
+
+# Get all the custom variables:
+# General variables
+echo "$DISK_ID" >> /opt/general_variables
+echo "$IMAGE" >> /opt/general_variables
+echo "$ONEGATE_ENDPOINT" >> /opt/general_variables
+echo "$SET_HOSTNAME" >> /opt/general_variables
+echo "$TARGET" >> /opt/general_variables
+echo "$VMID" >> /opt/general_variables
+
+# Network variables
+echo "$ETH0_CONTEXT_FORCE_IPV4" >> /opt/network_variables
+echo "$ETH0_DNS" >> /opt/network_variables
+echo "$ETH0_EXTERNAL" >> /opt/network_variables
+echo "$ETH0_GATEWAY" >> /opt/network_variables
+echo "$ETH0_GATEWAY6" >> /opt/network_variables
+echo "$ETH0_IP" >> /opt/network_variables
+echo "$ETH0_IP6" >> /opt/network_variables
+echo "$ETH0_IP6_PREFIX_LENGTH" >> /opt/network_variables
+echo "$ETH0_IP6_ULA" >> /opt/network_variables
+echo "$ETH0_MAC" >> /opt/network_variables
+echo "$ETH0_MASK" >> /opt/network_variables
+echo "$ETH0_METRIC" >> /opt/network_variables
+echo "$ETH0_METRIC6" >> /opt/network_variables
+echo "$ETH0_MTU" >> /opt/network_variables
+echo "$ETH0_NETWORK" >> /opt/network_variables
+echo "$ETH0_SEARCH_DOMAIN" >> /opt/network_variables
+echo "$ETH0_VLAN_ID" >> /opt/network_variables
+echo "$ETH0_VROUTER_IP" >> /opt/network_variables
+echo "$ETH0_VROUTER_IP6" >> /opt/network_variables
+echo "$ETH0_VROUTER_MANAGEMENT" >> /opt/network_variables
+
+# keepalived variables
+echo "$VROUTER_ID" >> /opt/keepalived_variables
+echo "$VROUTER_KEEPALIVED_ID" >> /opt/keepalived_variables
+
+# HAProxy variables
+echo "$LB_BACKENDS_PORTS" >> /opt/haproxxy_variables
+echo "$LB_PASSWORD" >> /opt/haproxxy_variables
+echo "$LB_USER" >> /opt/haproxxy_variables
+
+# OpenVPN credentials
+echo "$VPN_CREDENTIALS" >> /opt/openvpn_credentials
+
+# nginx variables
+echo "$L7_SITES_BACKENDS" >> /opt/nginx_variables
+echo "$DDOS" >> /opt/nginx_variables
+
+# S2S variables
+echo "$S2S_HOST_TO_PING" >> /opt/s2s_variables
+echo "$S2S_PRE_SHARED_KEY" >> /opt/s2s_variables
+echo "$S2S_REMOTE_NETWORKS" >> /opt/s2s_variables
+echo "$S2S_REMOTE_SITE_IP" >> /opt/s2s_variables
+
+# SDWAN
+echo "$NETWORK_ID" >> /opt/sdwan_variables
+
+# Root password
+echo "$PASSWORD" >> /opt/root_variables
+echo "$ROOT_PASSWORD" >> /opt/root_variables
