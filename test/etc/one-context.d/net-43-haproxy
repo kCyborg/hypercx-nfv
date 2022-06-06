@@ -1,0 +1,156 @@
+#!/bin/bash
+
+source /var/lib/./onegate.sh
+
+lb_backends_ports="$LB_BACKENDS_PORTS"
+lb_user="$LB_USER"
+lb_pass="$LB_PASSWORD"
+
+echo $lb_backends_ports >> /opt/haproxy.log
+echo $lb_user >> /opt/3-haproxy.log
+echo $lb_pass >> /opt/3-haproxy.log
+
+#lb_backends_ports="$(check "$LB_BACKENDS_PORTS" LB_BACKENDS_PORTS)"
+#lb_user="$(check $LB_USER LB_USER)"
+#lb_pass="$(check $LB_PASSWORD LB_PASSWORD)"
+
+start_haproxy () {
+        systemctl start haproxy
+#	systemctl enable --now haproxy
+}
+
+stop_haproxy () {
+	systemctl stop haproxy
+}
+
+configure_haproxy () {
+	if [ -n "$lb_backends_ports" ]; then
+		echo "LOAD BALANCER ENABLED." >> /etc/motd
+		status LB ENABLED 2>/dev/null
+		cat > /etc/haproxy/haproxy.cfg.new <<EOF
+global
+    log         127.0.0.1 local2
+
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    stats socket /var/lib/haproxy/stats
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+EOF
+
+		add_front_backends
+		configure_haproxy_mgmt_auth
+		check_changes
+		rm -f /opt/ha_ports
+
+	else
+		echo "LOAD BALANCER DISABLED." >> /etc/motd
+		status LB DISABLED 2>/dev/null
+		echo "Load Balancer variables were not found" >> /etc/motd
+		info LB "Load Balancer variables were not found" 2>/dev/null
+	fi
+}
+
+add_front_backends () {
+	count=1
+	for vars in $(echo $lb_backends_ports); do
+		front_port="$(echo $vars | cut -d ":" -f 1)"
+		backends="$(echo $vars | cut -d ":" -f 2)"
+		backend="${backends//,/ }"
+		back_port="$(echo $vars | cut -d ":" -f 3)"
+		echo "LB port $front_port" >> /etc/motd
+		echo "$front_port" >> /opt/ha_ports
+		cat >> /etc/haproxy/haproxy.cfg.new <<EOF
+
+frontend main$front_port
+    bind 0.0.0.0:$front_port
+    stats enable
+    mode tcp
+    use_backend servers$front_port
+
+backend servers$front_port
+        mode tcp
+        stats enable
+        balance roundrobin
+        hash-type consistent
+        option forwardfor
+        option tcp-check
+EOF
+
+		counter=1
+		for back in $(echo $backend); do
+			echo "	server $back $back:$back_port check port $back_port" >> /etc/haproxy/haproxy.cfg.new
+			echo "LB backend $counter: $back" >> /etc/motd
+			info LB_PORT"$front_port"_BACKEND$counter "$back" 2>/dev/null
+			counter=$((counter+1))
+		done
+		count=$((count+1))
+	done
+}
+
+configure_haproxy_mgmt_auth()
+{
+    echo "--------------------------------------------------" >> /etc/motd
+    if [ -n "$lb_user" ] && [ -n "$lb_pass" ]; then
+        echo "LOAD BALANCER AUTHENTICATION ENABLED" >> /etc/motd
+        cat >> /etc/haproxy/haproxy.cfg.new <<EOF
+listen stats
+        bind 0.0.0.0:8989
+        mode http
+        stats enable
+        stats uri /stats
+        stats realm HAProxy\ Statistics
+        stats auth $lb_user:$lb_pass
+EOF
+
+		echo "Load Balancer monitoring portal URL: http://server_address:8989/stats" >> /etc/motd
+        echo "Load Balancer monitoring portal user: $lb_user" >> /etc/motd
+        echo "Load Balancer monitoring portal password: $lb_pass" >> /etc/motd
+    else
+        echo "LOAD BALANCER AUTHENTICATION DISABLED. USER and PASSWORD variables were not found" >> /etc/motd
+    fi
+    echo "--------------------------------------------------" >> /etc/motd
+}
+
+check_changes () {
+	ha_new="/etc/haproxy/haproxy.cfg.new"
+	ha_old="/etc/haproxy/haproxy.cfg"
+	rep_ports="$(sort /opt/ha_ports | uniq -d)"
+	if [ -n "$rep_ports" ]; then
+		echo "Error: Duplicated frontend port detected. Port $rep_ports" >> /etc/motd
+		info LB "Error: Duplicated frontend port detected. Port $rep_ports" 2>/dev/null
+	elif cmp -s "$ha_new" "$ha_old"; then
+		echo "No modification needed" >> /etc/motd
+		info LB "No modification needed." 2>/dev/null
+	else
+		echo "A change was detected in the configuration file and it will be modified" >> /etc/motd
+		info LB "A change was detected in the configuration file and it will be modified" 2>/dev/null
+		stop_haproxy
+		mv /etc/haproxy/haproxy.cfg.new /etc/haproxy/haproxy.cfg
+		start_haproxy
+	fi
+}
+
+echo "=========================LOAD_BALANCER========================" >> /etc/motd
+configure_haproxy
