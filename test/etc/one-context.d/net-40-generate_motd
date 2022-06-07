@@ -24,63 +24,66 @@ for credential in $(echo $vpn_credentials); do
     echo "$pass_encoded" >> /opt/openvpn_credentials
 done
 
+mkdir -p /opt/.variables
 
 # Get all the custom variables:
 # General variables
-echo "$DISK_ID" >> /opt/general_variables
-echo "$IMAGE" >> /opt/general_variables
-echo "$ONEGATE_ENDPOINT" >> /opt/general_variables
-echo "$SET_HOSTNAME" >> /opt/general_variables
-echo "$TARGET" >> /opt/general_variables
-echo "$VMID" >> /opt/general_variables
+echo "General variables" >> /opt/.variables/variables
+echo "DISK_ID: $DISK_ID" >> /opt/.variables/variables
+echo "IMAGE: $IMAGE" >> /opt/.variables/variables
+echo "ONEGATE_ENDPOINT: $ONEGATE_ENDPOINT" >> /opt/.variables/variables
+echo "SET_HOSTNAME: $SET_HOSTNAME" >> /opt/.variables/variables
+echo "TARGET: $TARGET" >> /opt/.variables/variables
+echo "VMID: $VMID" >> /opt/.variables/variables
 
 # Network variables
-echo "$ETH0_CONTEXT_FORCE_IPV4" >> /opt/network_variables
-echo "$ETH0_DNS" >> /opt/network_variables
-echo "$ETH0_EXTERNAL" >> /opt/network_variables
-echo "$ETH0_GATEWAY" >> /opt/network_variables
-echo "$ETH0_GATEWAY6" >> /opt/network_variables
-echo "$ETH0_IP" >> /opt/network_variables
-echo "$ETH0_IP6" >> /opt/network_variables
-echo "$ETH0_IP6_PREFIX_LENGTH" >> /opt/network_variables
-echo "$ETH0_IP6_ULA" >> /opt/network_variables
-echo "$ETH0_MAC" >> /opt/network_variables
-echo "$ETH0_MASK" >> /opt/network_variables
-echo "$ETH0_METRIC" >> /opt/network_variables
-echo "$ETH0_METRIC6" >> /opt/network_variables
-echo "$ETH0_MTU" >> /opt/network_variables
-echo "$ETH0_NETWORK" >> /opt/network_variables
-echo "$ETH0_SEARCH_DOMAIN" >> /opt/network_variables
-echo "$ETH0_VLAN_ID" >> /opt/network_variables
-echo "$ETH0_VROUTER_IP" >> /opt/network_variables
-echo "$ETH0_VROUTER_IP6" >> /opt/network_variables
-echo "$ETH0_VROUTER_MANAGEMENT" >> /opt/network_variables
+echo "Network variables" >> 
+echo "ETH0_CONTEXT_FORCE_IPV4: $ETH0_CONTEXT_FORCE_IPV4" >> /opt/.variables/variables
+echo "ETH0_DNS: $ETH0_DNS" >> /opt/.variables/variables
+echo "ETH0_EXTERNAL: $ETH0_EXTERNAL" >> /opt/.variables/variables
+echo "ETH0_GATEWAY: $ETH0_GATEWAY" >> /opt/.variables/variables
+echo "ETH0_GATEWAY6: $ETH0_GATEWAY6" >> /opt/.variables/variables
+echo "ETH0_IP: $ETH0_IP" >> /opt/.variables/variables
+echo "ETH0_IP6: $ETH0_IP6" >> /opt/.variables/variables
+echo "ETH0_IP6_PREFIX_LENGTH: $ETH0_IP6_PREFIX_LENGTH" >> /opt/.variables/variables
+echo "ETH0_IP6_ULA: $ETH0_IP6_ULA" >> /opt/.variables/variables
+echo "ETH0_MAC: $ETH0_MAC" >> /opt/.variables/variables
+echo "ETH0_MASK: $ETH0_MASK" >> /opt/.variables/variables
+echo "ETH0_METRIC: $ETH0_METRIC" >> /opt/.variables/variables
+echo "ETH0_METRIC6: $ETH0_METRIC6" >> /opt/.variables/variables
+echo "ETH0_MTU: $ETH0_MTU" >> /opt/.variables/variables
+echo "ETH0_NETWORK: $ETH0_NETWORK" >> /opt/.variables/variables
+echo "ETH0_SEARCH_DOMAIN: $ETH0_SEARCH_DOMAIN" >> /opt/.variables/variables
+echo "ETH0_VLAN_ID: $ETH0_VLAN_ID" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP: $ETH0_VROUTER_IP" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP6: $ETH0_VROUTER_IP6" >> /opt/.variables/variables
+echo "ETH0_VROUTER_MANAGEMENT: $ETH0_VROUTER_MANAGEMENT" >> /opt/.variables/variables
 
 # keepalived variables
-echo "$VROUTER_ID" >> /opt/keepalived_variables
-echo "$VROUTER_KEEPALIVED_ID" >> /opt/keepalived_variables
+echo "VROUTER_ID: $VROUTER_ID" >> /opt/keepalived_variables
+echo "VROUTER_KEEPALIVED_ID: $VROUTER_KEEPALIVED_ID" >> /opt/.variables/variables
 
 # HAProxy variables
-echo "$LB_BACKENDS_PORTS" >> /opt/haproxxy_variables
-echo "$LB_PASSWORD" >> /opt/haproxxy_variables
-echo "$LB_USER" >> /opt/haproxxy_variables
+echo "LB_BACKENDS_PORTS: $LB_BACKENDS_PORTS" >> /opt/.variables/variables
+echo "LB_PASSWORD: $LB_PASSWORD" >> /opt/.variables/variables
+echo "LB_USER: $LB_USER" >> /opt/.variables/variables
 
-# OpenVPN credentials
-echo "$VPN_CREDENTIALS" >> /opt/openvpn_credentials
+# OpenVPN .variables/variables
+echo "VPN_CREDENTIALS: $VPN_CREDENTIALS" >> /opt/.variables/variables
 
 # nginx variables
-echo "$L7_SITES_BACKENDS" >> /opt/nginx_variables
-echo "$DDOS" >> /opt/nginx_variables
+echo "L7_SITES_BACKENDS: $L7_SITES_BACKENDS" >> /opt/.variables/variables
+echo "DDOS: $DDOS" >> /opt/.variables/variables
 
 # S2S variables
-echo "$S2S_HOST_TO_PING" >> /opt/s2s_variables
-echo "$S2S_PRE_SHARED_KEY" >> /opt/s2s_variables
-echo "$S2S_REMOTE_NETWORKS" >> /opt/s2s_variables
-echo "$S2S_REMOTE_SITE_IP" >> /opt/s2s_variables
+echo "S2S_HOST_TO_PING: $S2S_HOST_TO_PING" >> /opt/.variables/variables
+echo "S2S_PRE_SHARED_KEY: $S2S_PRE_SHARED_KEY" >> /opt/.variables/variables
+echo "S2S_REMOTE_NETWORKS: $S2S_REMOTE_NETWORKS" >> /opt/.variables/variables
+echo "S2S_REMOTE_SITE_IP: $S2S_REMOTE_SITE_IP" >> /opt/.variables/variables
 
 # SDWAN
-echo "$NETWORK_ID" >> /opt/sdwan_variables
+echo "NETWORK_ID: $NETWORK_ID" >> /opt/.variables/variables
 
 # Root password
-echo "$PASSWORD" >> /opt/root_variables
-echo "$ROOT_PASSWORD" >> /opt/root_variables
+echo "PASSWORD: $PASSWORD" >> /opt/root_variables
+echo "ROOT_PASSWORD: $ROOT_PASSWORD" >> /opt/root_variables
