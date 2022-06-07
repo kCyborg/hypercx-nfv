@@ -68,7 +68,7 @@ username-as-common-name
 verify-client-cert none
 EOF
 
-    private_ip=`ip -o addr show | grep -v 'inet6' | grep -v 'scope host' | awk '{print $4}' | cut -d '/' -f 1 | grep -E  '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)' | head -1`
+    # private_ip=`ip -o addr show | grep -v 'inet6' | grep -v 'scope host' | awk '{print $4}' | cut -d '/' -f 1 | grep -E  '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)' | head -1`
 
         if [ -n "${private_ip}" ]; then
 
@@ -109,15 +109,18 @@ EOF
     }
 
     get_first_interface_ipv4() {
-        cat /opt/.variables/variables | grep -w ETH0_IP | cut -d ' ' -f 2
+        cat /opt/.variables/variables | grep -w "ETH0_IP" | cut -d ' ' -f 2
     }
 
     get_first_interface_floating_ipv4() {
         cat /opt/.variables/variables | grep -w "ETH0_VROUTER_IP" | cut -d ' ' -f 2
     }
 
+    # Variables to work with
     user=`sed '1!d' /opt/openvpn_credentials`
     pass=`sed '2!d' /opt/openvpn_credentials`
+    private_ip=`ip -o addr show | grep -v 'inet6' | grep -v 'scope host' | awk '{print $4}' | cut -d '/' -f 1 | grep -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)' | head -1`
+    public_ip=`ip -o addr show | grep -v 'inet6' | grep -v 'scope host' | awk '{print $4}' | cut -d '/' -f 1 | grep -vE '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)' | head -1`
 
     # Getting the materials to work with
     wget -q -O /tmp/easyrsa.tgz https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.6/EasyRSA-unix-v3.0.6.tgz
@@ -153,7 +156,7 @@ EOF
             ipv4="$(get_first_interface_ipv4)"
         fi
 
-        if [ -n "${ipv4}" ]; then
+        if [ -n "${public_ip}" ]; then
 
             VPN_CREDENTIALS=`cat /opt/.variables/variables | grep -w "VPN_CREDENTIALS" | cut -d ' ' -f 2`
             if [ -n "${VPN_CREDENTIALS}" ]; then
@@ -164,7 +167,6 @@ EOF
             else
                 echo "OpenVPN DISABLED. ETH0 found using public IP but no users to be configured found." >> /etc/motd
                 status OpenVPN DISABLED 2>/dev/null
-                #info OpenVPN "ETH0 found using public IP but no users to be configured found." 2>/dev/null
             fi
 
         else
