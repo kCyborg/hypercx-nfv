@@ -37,8 +37,9 @@ echo "TARGET: $TARGET" >> /opt/.variables/variables
 echo "VMID: $VMID" >> /opt/.variables/variables
 
 # Network variables
-echo " " >> /opt/.variables/variables 
-echo "Network variables" >> /opt/.variables/variables 
+echo " " >> /opt/.variables/variables
+echo "Network variables" >> /opt/.variables/variables
+echo "ETH0" >> /opt/.variables/variables
 echo "ETH0_CONTEXT_FORCE_IPV4: $ETH0_CONTEXT_FORCE_IPV4" >> /opt/.variables/variables
 echo "ETH0_DNS: $ETH0_DNS" >> /opt/.variables/variables
 echo "ETH0_EXTERNAL: $ETH0_EXTERNAL" >> /opt/.variables/variables
@@ -56,30 +57,54 @@ echo "ETH0_MTU: $ETH0_MTU" >> /opt/.variables/variables
 echo "ETH0_NETWORK: $ETH0_NETWORK" >> /opt/.variables/variables
 echo "ETH0_SEARCH_DOMAIN: $ETH0_SEARCH_DOMAIN" >> /opt/.variables/variables
 echo "ETH0_VLAN_ID: $ETH0_VLAN_ID" >> /opt/.variables/variables
-echo "ETH0_VROUTER_IP: $ETH0_VROUTER_IP" >> /opt/.variables/variables
-echo "ETH0_VROUTER_IP6: $ETH0_VROUTER_IP6" >> /opt/.variables/variables
-echo "ETH0_VROUTER_MANAGEMENT: $ETH0_VROUTER_MANAGEMENT" >> /opt/.variables/variables
 
-# keepalived variables
+echo " " >> /opt/.variables/variables
+echo "ETH1" >> /opt/.variables/variables
+echo "ETH1_CONTEXT_FORCE_IPV4: $ETH1_CONTEXT_FORCE_IPV4" >> /opt/.variables/variables
+echo "ETH1_DNS: $ETH0_DNS" >> /opt/.variables/variables
+echo "ETH1_EXTERNAL: $ETH1_EXTERNAL" >> /opt/.variables/variables
+echo "ETH1_GATEWAY: $ETH1_GATEWAY" >> /opt/.variables/variables
+echo "ETH1_GATEWAY6: $ETH1_GATEWAY6" >> /opt/.variables/variables
+echo "ETH1_IP: $ETH1_IP" >> /opt/.variables/variables
+echo "ETH1_IP6: $ETH1_IP6" >> /opt/.variables/variables
+echo "ETH1_IP6_PREFIX_LENGTH: $ETH1_IP6_PREFIX_LENGTH" >> /opt/.variables/variables
+echo "ETH1_IP6_ULA: $ETH1_IP6_ULA" >> /opt/.variables/variables
+echo "ETH1_MAC: $ETH1_MAC" >> /opt/.variables/variables
+echo "ETH1_MASK: $ETH1_MASK" >> /opt/.variables/variables
+echo "ETH1_METRIC: $ETH1_METRIC" >> /opt/.variables/variables
+echo "ETH1_METRIC6: $ETH1_METRIC6" >> /opt/.variables/variables
+echo "ETH1_MTU: $ETH1_MTU" >> /opt/.variables/variables
+echo "ETH1_NETWORK: $ETH1_NETWORK" >> /opt/.variables/variables
+echo "ETH1_SEARCH_DOMAIN: $ETH1_SEARCH_DOMAIN" >> /opt/.variables/variables
+echo "ETH1_VLAN_ID: $ETH1_VLAN_ID" >> /opt/.variables/variables
+
+# masquerade variables
 echo " " >> /opt/.variables/variables
 echo "masquerade variables" >> /opt/.variables/variables
 
 # keepalived variables
-echo " " >> /opt/.variables/variables 
-echo "keepalived variables" >> /opt/.variables/variables 
+echo " " >> /opt/.variables/variables
+echo "keepalived variables" >> /opt/.variables/variables
 echo "VROUTER_ID: $VROUTER_ID" >> /opt/keepalived_variables
 echo "VROUTER_KEEPALIVED_ID: $VROUTER_KEEPALIVED_ID" >> /opt/.variables/variables
+echo "VROUTER_KEEPALIVED_PASSWORD: $VROUTER_KEEPALIVED_PASSWORD" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP: $ETH0_VROUTER_IP" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP6: $ETH0_VROUTER_IP6" >> /opt/.variables/variables
+echo "ETH0_VROUTER_MANAGEMENT: $ETH0_VROUTER_MANAGEMENT" >> /opt/.variables/variables
+echo "ETH1_VROUTER_IP: $ETH1_VROUTER_IP" >> /opt/.variables/variables
+echo "ETH1_VROUTER_IP6: $ETH1_VROUTER_IP6" >> /opt/.variables/variables
+echo "ETH1_VROUTER_MANAGEMENT: $ETH1_VROUTER_MANAGEMENT" >> /opt/.variables/variables
 
 # HAProxy variables
-echo " " >> /opt/.variables/variables 
-echo "HAProxy variables" >> /opt/.variables/variables 
+echo " " >> /opt/.variables/variables
+echo "HAProxy variables" >> /opt/.variables/variables
 echo "LB_BACKENDS_PORTS: $LB_BACKENDS_PORTS" >> /opt/.variables/variables
 echo "LB_PASSWORD: $LB_PASSWORD" >> /opt/.variables/variables
 echo "LB_USER: $LB_USER" >> /opt/.variables/variables
 
 # OpenVPN variables
-echo " " >> /opt/.variables/variables 
-echo "OpenVPN variables" >> /opt/.variables/variables 
+echo " " >> /opt/.variables/variables
+echo "OpenVPN variables" >> /opt/.variables/variables
 echo "VPN_CREDENTIALS: $VPN_CREDENTIALS" >> /opt/.variables/variables
 
 # nginx variables

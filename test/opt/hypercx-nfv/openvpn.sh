@@ -164,19 +164,22 @@ EOF
                 status OpenVPN ENABLED 2>/dev/null
                 configure_openvpn $ipv4
                 start_openvpn
+		echo "=========================OPENVPN========================" >> /etc/motd
             else
                 echo "OpenVPN DISABLED. ETH0 found using public IP but no users to be configured found." >> /etc/motd
                 status OpenVPN DISABLED 2>/dev/null
+		echo "=========================OPENVPN========================" >> /etc/motd
             fi
 
         else
             echo "OpenVPN DISABLED. ETH0 found using a private IP ." >> /etc/motd
             status OpenVPN DISABLED 2>/dev/null
+	    echo "=========================OPENVPN========================" >> /etc/motd
         fi
 
     else
         echo "OpenVPN DISABLED. NO ETH0 MAC." >> /etc/motd
         status OpenVPN DISABLED 2>/dev/null
-        #info OpenVPN "NO ETH0 MAC." 2>/dev/null
+	echo "=========================OPENVPN========================" >> /etc/motd
     fi
 fi
