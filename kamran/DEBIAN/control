@@ -1,0 +1,11 @@
+Package: hypercx-nfv
+Version: 2.2.1
+Section: main
+Priority: optional
+Architecture: all
+Depends: keepalived, haproxy, wget, python, openvpn, ipcalc, nginx, strongswan, git, certbot, one-context, python3-certbot-nginx, iptables-persistent
+Essential: no
+Installed-Size: 1024
+Maintainer: Virtalus <support@virtalus.com>
+Homepage: https://docs.virtalus.com/Advanced_Components/Hypercx_NFV/
+Description: HyperCX Virtual Network Functions 
