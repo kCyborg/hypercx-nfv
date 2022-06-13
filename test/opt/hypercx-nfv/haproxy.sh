@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Upgraded by Frank Morales (frank@virtalus.com) and Franco Diaz (franco@virtalus.com)
+# Changelog:
+
 source /var/lib/./onegate.sh
 
 wget -q -O /opt/haproxy.orig https://raw.githubusercontent.com/kCyborg/hypercx-nfv/master/haproxy.cfg

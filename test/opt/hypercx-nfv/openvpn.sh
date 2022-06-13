@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Upgraded by Frank Morales (frank@virtalus.com) and Franco Diaz (franco@virtalus.com)
+# Changelog:
+
 mkdir -p /opt/.openvpn/
 motd_path=/opt/.openvpn/motd
 
