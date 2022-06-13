@@ -56,7 +56,7 @@ case $1 in
       ## Exiting from script
       exit 0
       ;;
-  all | 3) 
+  all | 3)
       make_iptables_ipv4_persist
       make_iptables_ipv6_persist
       ## Exiting from script
