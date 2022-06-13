@@ -10,7 +10,7 @@ mkdir -p /opt/.masquerade/
 motd_path=/opt/.masquerade/motd
 flag=/opt/.masquerade/flag
 
-if [ -f $flag ]; then
+if [ ! -f $flag ]; then
 
         ### Functions
 
