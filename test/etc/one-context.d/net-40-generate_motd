@@ -25,6 +25,7 @@ for credential in $(echo $vpn_credentials); do
 done
 
 mkdir -p /opt/.variables
+mkdir -p /opt/.motd
 
 # Get all the custom variables:
 # General variables

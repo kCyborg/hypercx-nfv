@@ -1,5 +1,8 @@
 #!/bin/bash
 
+mkdir -p /opt/.openvpn/
+motd_path=/opt/.openvpn/motd
+
 if [ ! -f /etc/openvpn/server.conf ]; then
 
     function d2i() {
@@ -31,6 +34,7 @@ if [ ! -f /etc/openvpn/server.conf ]; then
         cat /etc/openvpn/pki/ca.crt >> $client_config
         echo "</ca>" >> $client_config
         echo "Created OpenVPN account for user $1" >> /etc/motd
+        echo "Created OpenVPN account for user $1" >> $motd_path
         #info OpenVPN "Created OpenVPN account for user $1" 2>/dev/null
     }
 
@@ -140,6 +144,7 @@ EOF
 
 
     echo "=========================OPENVPN========================" >> /etc/motd
+    echo "=========================OPENVPN========================" >> $motd_path
     mkdir -p /root/vpn_config_files
     systemctl stop openvpn@server
 
@@ -161,25 +166,33 @@ EOF
             VPN_CREDENTIALS=`cat /opt/.variables/variables | grep -w "VPN_CREDENTIALS" | cut -d ' ' -f 2`
             if [ -n "${VPN_CREDENTIALS}" ]; then
                 echo "OpenVPN ENABLED." >> /etc/motd
+                echo "OpenVPN ENABLED." >> $motd_path
                 status OpenVPN ENABLED 2>/dev/null
                 configure_openvpn $ipv4
                 start_openvpn
-		echo "=========================OPENVPN========================" >> /etc/motd
+                echo "=========================OPENVPN========================" >> /etc/motd
+                echo "=========================OPENVPN========================" >> $motd_path
             else
                 echo "OpenVPN DISABLED. ETH0 found using public IP but no users to be configured found." >> /etc/motd
+                echo "OpenVPN DISABLED. ETH0 found using public IP but no users to be configured found." >> $motd_path
                 status OpenVPN DISABLED 2>/dev/null
-		echo "=========================OPENVPN========================" >> /etc/motd
+                echo "=========================OPENVPN========================" >> /etc/motd
+                echo "=========================OPENVPN========================" >> $motd_path
             fi
 
         else
             echo "OpenVPN DISABLED. ETH0 found using a private IP ." >> /etc/motd
+            echo "OpenVPN DISABLED. ETH0 found using a private IP ." >> $motd_path
             status OpenVPN DISABLED 2>/dev/null
-	    echo "=========================OPENVPN========================" >> /etc/motd
+            echo "=========================OPENVPN========================" >> /etc/motd
+            echo "=========================OPENVPN========================" >> $motd_path
         fi
 
     else
         echo "OpenVPN DISABLED. NO ETH0 MAC." >> /etc/motd
+        echo "OpenVPN DISABLED. NO ETH0 MAC." >> $motd_path
         status OpenVPN DISABLED 2>/dev/null
-	echo "=========================OPENVPN========================" >> /etc/motd
+        echo "=========================OPENVPN========================" >> /etc/motd
+        echo "=========================OPENVPN========================" >> $motd_path
     fi
 fi
