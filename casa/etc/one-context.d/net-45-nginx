@@ -1,0 +1,365 @@
+#!/bin/bash
+
+# -------------------------------------------------------------------------- #
+# Copyright 2010-2016, OpenNebula Systems                                    #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+#--------------------------------------------------------------------------- #
+
+source /var/lib/./onegate.sh
+
+sites_backends="$L7_SITES_BACKENDS"
+ddos="$DDOS"
+#sites_backends="$(check "$L7_SITES_BACKENDS" L7_SITES_BACKENDS)"
+#ddos="$(check $DDOS DDOS)"
+
+start_nginx () {
+    systemctl start nginx
+}
+
+stop_nginx () {
+    systemctl stop nginx
+}
+
+get_sites () {
+	count=1
+	echo "Remmember that if you have more than one site, the DNS entries must be valid for the L7 Balancer to work since it will only work with URLs." >> /etc/motd
+	info L7_LB_Reminder "Remmember that if you have more than one site, the DNS entries must be valid for the L7 Balancer to work since it will only work with URLs." 2>/dev/null
+	for sites in $(echo $sites_backends); do
+		site="$(echo $sites | cut -d ':' -f 1)"
+		backends_site="$(echo $sites | cut -d ':' -f 2)"
+		port="$(echo $sites | cut -d ':' -f 3)"
+		echo $backends_site > /opt/backends
+		if [ "$count" = "1" ]; then
+			gen_first_site
+			add_backends
+			add_certificate
+	else
+			gen_other_sites
+			add_backends
+			add_certificate
+		fi
+	count=$((count+1))
+	done
+
+	check_changes
+	activate_ddos
+}
+
+gen_first_site () {	
+	if [ -n "$site" ] && [ -n "$backends_site" ]; then
+		cat > /etc/nginx/sites-available/reverse.conf <<EOF
+# $site
+
+server {
+        listen 80;
+EOF
+
+	if [ -n "$port" ]; then
+		if [ "$port" != "80" ]; then
+			echo "	listen $port;" >> /etc/nginx/sites-available/reverse.conf
+		fi
+	fi
+
+	echo "	server_name $site;" >> /etc/nginx/sites-available/reverse.conf
+
+                if [ "$ddos" = "YES" ]; then
+                        echo "  client_body_timeout 5s;" >> /etc/nginx/sites-available/reverse.conf
+                        echo "  client_header_timeout 5s;" >> /etc/nginx/sites-available/reverse.conf
+                fi
+
+                cat >> /etc/nginx/sites-available/reverse.conf <<EOF
+        location / {
+                proxy_pass http://backends$count;
+        }
+}
+
+EOF
+
+	else
+		echo "The sites cannot be configured, something went wrong" >> /etc/motd
+	fi
+
+}
+
+gen_other_sites () {
+	if [ -n "$site" ] && [ -n "$backends_site" ]; then
+		cat >> /etc/nginx/sites-available/reverse.conf <<EOF
+
+# $site
+
+server {
+        listen 80;
+EOF
+	if [ -n "$port" ]; then
+		if [ "$port" != "80" ]; then
+			echo "	listen $port;" >> /etc/nginx/sites-available/reverse.conf
+		fi
+        fi
+
+        echo "	server_name $site;" >> /etc/nginx/sites-available/reverse.conf
+
+                if [ "$ddos" = "YES" ]; then
+                        echo "  client_body_timeout 5s;" >> /etc/nginx/sites-available/reverse.conf
+                        echo "  client_header_timeout 5s;" >> /etc/nginx/sites-available/reverse.conf
+                fi
+
+                cat >> /etc/nginx/sites-available/reverse.conf <<EOF
+        location / {
+                proxy_pass http://backends$count;
+        }
+}
+EOF
+
+	else
+                echo "The sites cannot be configured, something went wrong" >> /etc/motd
+        fi
+}
+
+add_backends () {
+	sed -i 's/,/ /g' /opt/backends
+	backends="$(cat /opt/backends)"
+	counter=1
+	echo "LOAD BALANCER L7 SITE NAME: $site" >> /etc/motd
+        echo "upstream backends$count {" >> /etc/nginx/sites-available/reverse.conf
+	echo "	least_conn;" >> /etc/nginx/sites-available/reverse.conf
+        for ip in $(echo $backends); do
+                if [ "$ddos" = "YES" ]; then
+			if [ -n "$port" ]; then
+				echo "	server $ip:$port max_fails=1 fail_timeout=10 max_conns=100;" >> /etc/nginx/sites-available/reverse.conf
+			else
+				echo "	server $ip max_fails=1 fail_timeout=10 max_conns=100;" >> /etc/nginx/sites-available/reverse.conf
+			fi
+                else
+			if [ -n "$port" ]; then
+				echo "	server $ip:$port max_fails=1 fail_timeout=10;" >> /etc/nginx/sites-available/reverse.conf
+			else
+				echo "	server $ip max_fails=1 fail_timeout=10;" >> /etc/nginx/sites-available/reverse.conf
+			fi
+                fi
+                echo "LOAD BALANCER L7 BACKEND $counter: $ip" >> /etc/motd
+        counter=$((counter+1))
+    done
+        echo "}" >> /etc/nginx/sites-available/reverse.conf
+	echo "LOAD BALANCER L7 BACKENDS PORT: $port" >> /etc/motd
+
+}
+
+check_changes () {
+        nginx_config="/etc/nginx/sites-available/reverse.conf"
+        previous_nginx_config="/etc/nginx/sites-available/reverse.conf.bk"
+
+        if cmp -s "$nginx_config" "$previous_nginx_config"; then
+                echo "No modification needed" >> /etc/motd
+                info L7_LB "No modification needed." 2>/dev/null
+                start_nginx
+        else
+                echo "A change was detected in the proxy configuration file and it will be modified" >> /etc/motd
+                info L7_LB "Proxy configuration file will be modified." 2>/dev/null
+                enable_site
+                fuser -k 80/tcp
+                start_nginx
+                systemctl restart nginx
+        fi
+
+}
+
+activate_ddos () {
+        cat > /etc/nginx/nginx.conf.new <<EOF
+
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+EOF
+
+        if [ "$ddos" = "YES" ]; then
+                echo "  worker_connections 5000;" >> /etc/nginx/nginx.conf.new
+        else
+                echo "  worker_connections 768;" >> /etc/nginx/nginx.conf.new
+        fi
+
+        cat >> /etc/nginx/nginx.conf.new <<EOF
+        # multi_accept on;
+}
+
+http {
+
+        ##
+        # Basic Settings
+        ##
+EOF
+        if [ "$ddos" = "YES" ]; then
+                echo "	client_body_buffer_size 200K;" >> /etc/nginx/nginx.conf.new
+                echo "	client_header_buffer_size 2k;" >> /etc/nginx/nginx.conf.new
+                echo "	client_max_body_size 200k;" >> /etc/nginx/nginx.conf.new
+                echo "	large_client_header_buffers 3 1k;" >> /etc/nginx/nginx.conf.new
+        fi
+
+	cat >> /etc/nginx/nginx.conf.new <<EOF
+
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+        # server_tokens off;
+
+        server_names_hash_bucket_size 64;
+        # server_name_in_redirect off;
+
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        ##
+        # SSL Settings
+        ##
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+        ssl_prefer_server_ciphers on;
+
+        ##
+        # Logging Settings
+        ##
+
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+
+        ##
+        # Gzip Settings
+        ##
+
+        gzip on;
+
+	# gzip_vary on;
+        # gzip_proxied any;
+        # gzip_comp_level 6;
+        # gzip_buffers 16 8k;
+        # gzip_http_version 1.1;
+        # gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+        ##
+        # Virtual Host Configs
+        ##
+
+        include /etc/nginx/conf.d/*.conf;
+        include /etc/nginx/sites-enabled/*;
+}
+
+
+#mail {
+#       # See sample authentication script at:
+#       # http://wiki.nginx.org/ImapAuthenticateWithApachePhpScript
+#
+#       # auth_http localhost/auth.php;
+#       # pop3_capabilities "TOP" "USER";
+#       # imap_capabilities "IMAP4rev1" "UIDPLUS";
+#
+#       server {
+#               listen     localhost:110;
+#               protocol   pop3;
+#               proxy      on;
+#       }
+#
+#       server {
+#               listen     localhost:143;
+#               protocol   imap;
+#               proxy      on;
+#       }
+#}
+
+EOF
+
+config_old="/etc/nginx/nginx.conf"
+config_new="/etc/nginx/nginx.conf.new"
+
+        if [ "$ddos" = "YES" ]; then
+                echo "DDoS protection enabled" >> /etc/motd
+                status L7_LB_DDOS ENABLED 2>/dev/null
+                if cmp -s "$config_old" "$config_new"; then
+                        echo "No modification needed to DDoS" >> /etc/motd
+                        info L7_LB_DDoS "No modification needed to DDoS" 2>/dev/null
+                        start_nginx
+                else
+                        echo "A change was detected in DDoS and it will be modified" >> /etc/motd
+                        info L7_LB_DDoS "A change was detected in DDoS and it will be modified" 2>/dev/null
+                        mv /etc/nginx/nginx.conf.new /etc/nginx/nginx.conf
+                        sed -i "s/#net.ipv4.conf.all.rp_filter=1/net.ipv4.conf.all.rp_filter=1/g" /etc/sysctl.conf
+                        sed -i "s/#net.ipv4.tcp_syncookies=1/net.ipv4.tcp_syncookies=1/g" /etc/sysctl.conf
+                        sysctl -p
+                        fuser -k 80/tcp
+                        start_nginx
+                        systemctl restart nginx
+                fi
+        else
+                echo "DDoS protection disabled" >> /etc/motd
+                status L7_LB_DDOS DISABLED 2>/dev/null
+                if cmp -s "$config_old" "$config_new"; then
+                        echo "No modification needed to DDoS" >> /etc/motd
+                        info L7_LB_DDoS "No modification needed to DDoS" 2>/dev/null
+                        start_nginx
+                else
+                        echo "A change was detected in DDoS and it will be modified" >> /etc/motd
+                        info L7_LB_DDoS "A change was detected in DDoS and it will be modified" 2>/dev/null
+                        mv /etc/nginx/nginx.conf.new /etc/nginx/nginx.conf
+                        sed -i "s/net.ipv4.conf.all.rp_filter=1/#net.ipv4.conf.all.rp_filter=1/g" /etc/sysctl.conf
+                        sed -i "s/net.ipv4.tcp_syncookies=1/#net.ipv4.tcp_syncookies=1/g" /etc/sysctl.conf
+                        sysctl -p
+                        fuser -k 80/tcp
+                        start_nginx
+                        systemctl restart nginx
+                fi
+        fi
+
+}
+
+enable_site () {
+        link="$(find /etc/nginx/ -type l | grep reverse | cut -d '/' -f 5)"
+        if [ "$link" = "reverse.conf" ]; then
+                echo "Link already created"
+        else
+                ln -s /etc/nginx/sites-available/reverse.conf /etc/nginx/sites-enabled/reverse.conf
+        fi
+}
+
+add_certificate () {
+        site_now="$(nslookup $site | grep -E "Name")"
+        if [ -n "$site_now" ]; then
+                echo "A certificate will be configured" >> /etc/motd
+                info L7_LB "A certificate will be configured." 2>/dev/null
+                certbot --nginx -d $site --redirect --non-interactive --agree-tos -m example@gmail.com
+                echo "#!/bin/bash" > /opt/hypercx-nfv/nginx.sh
+                echo "cerboot renew" >> /opt/hypercx-nfv/nginx.sh
+        else
+                echo "The specified DNS entry was not found so the certificate was not configured." >> /etc/motd
+                info L7_LB "The specified DNS entry was not found so the certificate was not configured." 2>/dev/null
+        fi
+
+}
+
+echo "=========================LOAD_BALANCER_L7========================" >> /etc/motd
+
+if [ -n "$sites_backends" ]; then
+	echo "LOAD BALANCER L7 ENABLED." >> /etc/motd
+	status L7_LB ENABLED 2>/dev/null
+	cp /etc/nginx/sites-available/reverse.conf /etc/nginx/sites-available/reverse.conf.bk
+	get_sites
+else
+	echo "LOAD BALANCER DISABLED." >> /etc/motd
+	status L7_LB DISABLED 2>/dev/null
+	echo "Load Balancer L7 SITE_NAME and BACKEND variables were not found" >> /etc/motd
+	info L7_LB "Parameters were not found." 2>/dev/null
+fi
+

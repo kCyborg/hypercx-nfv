@@ -1,0 +1,148 @@
+#!/bin/bash
+
+source /var/lib/./onegate.sh
+source /var/run/one-context/one_env
+
+vpn_credentials="$VPN_CREDENTIALS"
+#vpn_credentials="$(check "$VPN_CREDENTIALS" VPN_CREDENTIALS)"
+
+start_openvpn()
+{
+    systemctl start openvpn@server
+}
+
+stop_openvpn()
+{
+    systemctl stop openvpn@server
+}
+
+#configure_easyrsa()
+#{
+#    mkdir -p /etc/openvpn/pki
+#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch init-pki
+#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch build-ca nopass
+#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch gen-req HyperCX nopass
+#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch sign-req server HyperCX
+#}
+
+create_openvpn_client()
+{
+    client_config="/root/vpn_config_files/$1.ovpn"
+    cp /etc/openvpn/server.conf $client_config
+    echo "client" >> $client_config
+    echo "auth-user-pass" >> $client_config
+    echo "auth-nocache" >> $client_config
+    echo "remote $2 1194 udp" >> $client_config
+    echo "<ca>" >> $client_config
+    cat /etc/openvpn/pki/ca.crt >> $client_config
+    echo "</ca>" >> $client_config
+    echo "Created OpenVPN account for user $1" >> /etc/motd
+    info OpenVPN "Created OpenVPN account for user $1" 2>/dev/null
+}
+
+configure_openvpn()
+{
+#    if [ ! -f /etc/openvpn/pki/ca.crt ]; then
+#        configure_easyrsa
+#    fi
+#
+#    if [ ! -f /etc/openvpn/dh2048.pem ]; then
+#        openssl dhparam -out /etc/openvpn/dh2048.pem 2048
+#    fi
+#
+#    if [ ! -f /etc/openvpn/ta.key ]; then
+#        openvpn --genkey --secret /etc/openvpn/ta.key
+#    fi
+
+    #Generate part of openvpn conf that is common with the client conf
+    cat > /etc/openvpn/server.conf <<EOF
+dev tun
+cipher AES-256-CBC
+persist-key
+persist-tun
+status openvpn-status.log
+verb 3
+explicit-exit-notify 1
+EOF
+
+    for credential in $(echo $vpn_credentials); do
+        user=$(echo $credential | cut -d ':' -f 1)
+        pass=$(echo $credential | cut -d ':' -f 2 | base64)
+        echo "$user $pass" >> /etc/openvpn/vpn_users
+        create_openvpn_client $user $1
+    done
+
+    #Add the rest of the configurations only meant for the server
+    cat >> /etc/openvpn/server.conf <<EOF
+ifconfig-pool-persist ipp.txt
+keepalive 10 120
+topology subnet
+port 1194
+proto udp
+server 192.168.253.0 255.255.255.0
+ca pki/ca.crt
+cert pki/issued/HyperCX.crt
+key pki/private/HyperCX.key
+dh dh2048.pem
+script-security 3
+auth-user-pass-verify /etc/openvpn/check_user_credentials.sh via-env
+username-as-common-name
+duplicate-cn
+client-cert-not-required
+EOF
+
+while IFS= read -r nic; do
+    ipv4=$(env | grep -E "^$nic+_IP=" | cut -d '=' -f 2)
+    mask=$(env | grep -E "^$nic+_MASK=" | cut -d '=' -f 2)
+    if [ -n "${ipv4}" ] && [ -n "${mask}" ]; then
+        ipv4_net_addr=$(ipcalc $ipv4 $mask | grep Network | awk '{print $2}' | cut -d '/' -f 1)
+        echo "Detected internal network: $ipv4 $mask" >> /etc/motd
+        echo "push \"route $ipv4_net_addr $mask\"" >> /etc/openvpn/server.conf
+    fi
+done <<< $(env | grep -E "^ETH[1-9]+_MAC" | cut -d '_' -f 1)
+}
+
+get_first_interface_ipv4() {
+    env | grep -E "^ETH0+_IP=" | cut -d '=' -f 2
+}
+
+get_first_interface_floating_ipv4() {
+    env | grep -E "^ETH0+_VROUTER_IP=" | cut -d '=' -f 2
+}
+
+echo "=========================OPENVPN========================" >> /etc/motd
+mkdir -p /root/vpn_config_files
+stop_openvpn
+
+#Clear existing users
+echo > /etc/openvpn/vpn_users
+if [ -n "${ETH0_MAC}" ]; then
+    if [ -n "${ETH0_VROUTER_IP}" ]; then
+        ipv4="$(get_first_interface_floating_ipv4)"
+        ipv4_private="$(echo $ipv4 | grep -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)')"
+    else
+        ipv4="$(get_first_interface_ipv4)"
+        ipv4_private="$(echo $ipv4 | grep -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)')"
+    fi
+    if [ -z "${ipv4_private}" ]; then
+        if [ -n "${VPN_CREDENTIALS}" ]; then
+            echo "OpenVPN ENABLED." >> /etc/motd
+	    status OpenVPN ENABLED 2>/dev/null
+            configure_openvpn $ipv4
+            start_openvpn
+        else
+            echo "OpenVPN DISABLED. ETH0 found using public IP but no users to be configured found." >> /etc/motd
+	    status OpenVPN DISABLED 2>/dev/null
+	    info OpenVPN "ETH0 found using public IP but no users to be configured found." 2>/dev/null
+        fi
+    else
+        echo "OpenVPN DISABLED. ETH0 found using a private IP ." >> /etc/motd
+	status OpenVPN DISABLED 2>/dev/null
+	info OpenVPN "ETH0 found using a private IP ." 2>/dev/null
+    fi
+else
+    echo "OpenVPN DISABLED. NO ETH0 MAC." >> /etc/motd
+    status OpenVPN DISABLED 2>/dev/null
+    info OpenVPN "NO ETH0 MAC." 2>/dev/null
+fi
+

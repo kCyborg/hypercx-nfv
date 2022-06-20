@@ -1,0 +1,258 @@
+#!/bin/bash
+
+# -------------------------------------------------------------------------- #
+# Copyright 2010-2016, OpenNebula Systems                                    #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+#--------------------------------------------------------------------------- #
+
+source /var/lib/./onegate.sh
+
+remote_site_ip="$S2S_REMOTE_SITE_IP"
+remote_networks="$S2S_REMOTE_NETWORKS"
+pre_shared_key="$S2S_PRE_SHARED_KEY"
+#remote_site_ip="$(check $S2S_REMOTE_SITE_IP S2S_REMOTE_SITE_IP)"
+#remote_networks="$(check "$S2S_REMOTE_NETWORKS" S2S_REMOTE_NETWORKS)"
+#pre_shared_key="$(check $S2S_PRE_SHARED_KEY S2S_PRE_SHARED_KEY)"
+
+VMID="$VMID"
+#p1_algorithm=aes
+#p1_key_length=256
+#p1_hash=sha2_256
+#p1_dh_group=1024
+#p1_lifetime=28800
+
+#p2_algorithm=aes
+#p2_key_length=256
+#p2_hash=sha2_256
+#p2_dh_group=
+#p2_lifetime=3600
+
+automatically_ping_host="$S2S_HOST_TO_PING"
+#automatically_ping_host="$(check $S2S_HOST_TO_PING S2S_HOST_TO_PING)"
+
+start_ipsec () {
+    ipsec start
+}
+
+stop_ipsec () {
+    ipsec stop
+}
+
+restart_ipsec () {
+	systemctl restart strongswan
+}
+
+s2s_vpn () {
+if [ -n "$remote_site_ip" ] && [ -n "$remote_networks" ] && [ -n "$pre_shared_key" ]; then	
+		stop_ipsec
+		echo "S2S VPN ENABLED" >> /etc/motd
+		status S2S_VPN ENABLED 2>/dev/null
+		sed -i 's/# install_routes = yes/install_routes = no/g' /etc/strongswan.d/charon.conf
+		cp /opt/hypercx-nfv/remote_networks /opt/hypercx-nfv/remote_networks.bk
+		echo "$remote_networks" > /opt/hypercx-nfv/remote_networks
+		cp /etc/ipsec.conf /etc/ipsec.conf.bk
+		cp /etc/ipsec.secrets /etc/ipsec.secrets.bk
+		cat > /etc/ipsec.conf <<EOF
+# HyperCX IPsec configuration file
+
+# basic configuration
+
+config setup
+	strictcrlpolicy=no
+        uniqueids = yes
+        charondebug="all"
+
+# VPN Connections
+
+conn VPN
+	authby=secret
+      	left=%defaultroute
+	leftid=$(cat /root/public)
+      	right=$remote_site_ip
+        ike=aes256-sha2_256-modp1024!
+        esp=aes256-sha2_256!
+        keyingtries=0
+        ikelifetime=1h
+        lifetime=8h
+       	dpddelay=30
+       	dpdtimeout=120
+	mark=42
+       	dpdaction=restart
+       	auto=start
+	leftsubnet=0.0.0.0/0
+	rightsubnet=0.0.0.0/0
+EOF
+
+	echo "Remote Public IP: $remote_site_ip" >> /etc/motd
+	ip="$(cat /var/run/one-context/one_env | grep -E "S2S_REMOTE_SITE_IP" | cut -d '"' -f 2)"
+	onegate vm update $VMID --data S2S_REMOTE_SITE_IP=$ip 2>/dev/null
+	echo "Local Public IP: $(cat /root/public)" >> /etc/motd
+	vpn_interface
+	check_changes
+	add_automatic_ping
+else
+	echo "S2S VPN DISABLED. ETH0 found using a public IP but the Remote Site parameters not found." >> /etc/motd
+	info S2S_VPN "Remote Site parameters not found." 2>/dev/null
+	status S2S_VPN DISABLED 2>/dev/null
+fi
+}
+
+vpn_interface () {
+	ip_a="$(ip a | grep -E "vti0@NONE: <POINT" | cut -d ' ' -f 2)"
+        if [ "$ip_a" = "vti0@NONE:" ]; then
+                ip tunnel del vti0
+                ip tunnel add vti0 local $(cat /root/public) remote $remote_site_ip mode vti key 42
+                ip link set vti0 up
+                ip addr add 192.168.0.1/32 dev vti0
+                add_networks
+        else
+                ip tunnel add vti0 local $(cat /root/public) remote $remote_site_ip mode vti key 42
+                ip link set vti0 up
+                ip addr add 192.168.0.1/32 dev vti0
+                add_networks
+        fi
+}
+
+check_changes () {
+	ipsec_config="/etc/ipsec.conf"
+	previous_ipsec_config="/etc/ipsec.conf.bk"
+	ipsec_secrets="/etc/ipsec.secrets"
+        previous_ipsec_secrets="/etc/ipsec.secrets.bk"
+	remote_net="/opt/hypercx-nfv/remote_networks"
+	previous_remote_net="/opt/hypercx-nfv/remote_networks.bk"
+
+	if cmp -s "$ipsec_config" "$previous_ipsec_config"; then
+		if cmp -s "$ipsec_secrets" "$previous_ipsec_secrets"; then
+			if cmp -s "$remote_net" "$previous_remote_net"; then
+				echo "No modification needed" >> /etc/motd
+				info S2S_VPN "No modification needed." 2>/dev/null
+			else
+				echo "A change was detected in the remote networks and new ones will be added." >> /etc/motd
+				info S2S_VPN "A change was detected in the remote networks and new ones will be added." 2>/dev/null
+			fi
+		elif cmp -s "$remote_net" "$previous_remote_net"; then
+			echo "A change was detected in the vpn key and it will be updated" >> /etc/motd
+			info S2S_VPN "The vpn key will be updated." 2>/dev/null
+			add_key
+			start_ipsec
+			restart_ipsec
+		else
+			echo "A change was detected in the vpn key and on remote networks, so the key will be updated and new networks will be added." >> /etc/motd
+			info S2S_VPN "A change was detected in the vpn key and on remote networks, so the key will be updated and new networks will be added." 2>/dev/null
+			add_key
+			start_ipsec
+			restart_ipsec
+		fi
+	elif cmp -s "$ipsec_secrets" "$previous_ipsec_secrets"; then
+		if cmp -s "$remote_net" "$previous_remote_net"; then
+			echo "A change was detected in the remote site ip and it will be updated" >> /etc/motd
+			info S2S_VPN "The remote site ip will be updated." 2>/dev/null
+			add_key
+			start_ipsec
+			restart_ipsec
+		else
+			echo "A change was detected in the remote site ip and in the remote networks, so the ip will be updated and the networks will be added." >> /etc/motd
+			info S2S_VPN "A change was detected in the remote site ip and in the remote networks, so the ip will be updated and the networks will be added." 2>/dev/null
+			add_key
+			start_ipsec
+			restart_ipsec
+		fi
+	elif cmp -s "$remote_net" "$previous_remote_net"; then
+		echo "A change was detected in the remote site ip and it will be updated." >> /etc/motd
+		info S2S_VPN "A change was detected in the remote site ip and it will be updated." 2>/dev/null
+		add_key
+                start_ipsec
+                restart_ipsec
+	else
+		echo "A change was detected in all vpn parameters and will be updated." >> /etc/motd
+		info S2S_VPN "A change was detected in all vpn parameters and will be updated." 2>/dev/null
+		add_key
+		start_ipsec
+		restart_ipsec
+	fi
+
+}
+
+add_networks () {
+	counter=1
+	for ip in $(echo $remote_networks); do
+		ip route add $ip dev vti0
+		echo "Remote network $counter: $ip" >> /etc/motd
+		counter=$((counter+1))
+	done
+	get_local_networks
+}
+
+add_key () {
+	echo " $(cat /root/public) $remote_site_ip : PSK "$pre_shared_key" " > /etc/ipsec.secrets
+}
+
+add_automatic_ping () {
+	if [ -n "$automatically_ping_host" ]; then
+		echo "#!/bin/bash" > /opt/hypercx-nfv/s2svpn.sh
+		echo "/bin/ping -c 10 $automatically_ping_host" >> /opt/hypercx-nfv/s2svpn.sh
+		echo "/sbin/iptables -t nat -I POSTROUTING -m policy --pol ipsec --dir out -j ACCEPT" >> /opt/hypercx-nfv/s2svpn.sh
+	else
+		echo "#!/bin/bash" > /opt/hypercx-nfv/s2svpn.sh
+		echo "/sbin/iptables -t nat -I POSTROUTING -m policy --pol ipsec --dir out -j ACCEPT" >> /opt/hypercx-nfv/s2svpn.sh
+	fi
+	echo "/usr/sbin/ipsec start" >> /opt/hypercx-nfv/s2svpn.sh
+	rm -f /root/public
+	rm -f /root/enviroment
+}
+
+get_local_networks () {
+env | grep -E "*ETH[1-9]+_MAC" | cut -d '_' -f 1 >> /root/enviroment
+input=/root/enviroment
+while IFS= read -r nic; do
+    ipv4=$(env | grep -E "^$nic+_IP=" | cut -d '=' -f 2)
+    mask=$(env | grep -E "^$nic+_MASK=" | cut -d '=' -f 2)
+    if [ -n "${ipv4}" ] && [ -n "${mask}" ]; then
+        ipv4_net_addr=$(ipcalc $ipv4 $mask | grep Network | awk '{print $2}')
+        echo "Local network: $ipv4_net_addr" >> /etc/motd
+    fi
+done < "$input"
+}
+
+get_first_interface_ipv4() {
+    env | grep -E "^ETH0+_IP=" | cut -d '=' -f 2
+}
+
+get_first_interface_floating_ipv4() {
+    env | grep -E "^ETH0+_VROUTER_IP=" | cut -d '=' -f 2
+}
+
+echo "=========================S2S VPN========================" >> /etc/motd
+if [ -n "${ETH0_MAC}" ]; then
+	if [ -n "${ETH0_VROUTER_IP}" ]; then
+        ipv4="$(get_first_interface_floating_ipv4)"
+        ipv4_private="$(echo $ipv4 | grep -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)')"
+    else
+        ipv4="$(get_first_interface_ipv4)"
+        ipv4_private="$(echo $ipv4 | grep -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)')"
+    fi
+    if [ -z "${ipv4_private}" ]; then
+        	echo "$ipv4" >> /root/public
+		s2s_vpn
+    else
+        echo "S2S VPN DISABLED. ETH0 found using a private IP ." >> /etc/motd
+	info S2S_VPN "ETH0 found using a private IP." 2>/dev/null
+	status S2S_VPN DISABLED 2>/dev/null
+    fi
+else
+    echo "S2S VPN DISABLED. NO ETH0 MAC." >> /etc/motd
+    info S2S_VPN "NO ETH0" 2>/dev/null
+    status S2S_VPN DISABLED 2>/dev/null
+fi
+

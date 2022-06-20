@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# -------------------------------------------------------------------------- #
+# Copyright 2010-2016, OpenNebula Systems                                    #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+#--------------------------------------------------------------------------- #
+
+source /var/lib/./onegate.sh
+
+#netid="$(check $NETWORK_ID NETWORK_ID)"
+netid="$NETWORK_ID"
+
+check_changes () {
+	zerotierint="$(ip a | grep zt)"
+	zerotiernet="$(ip a | grep zt | grep inet | cut -d ' ' -f 6)"
+	net="$(ipcalc $zerotiernet | grep Network | awk '{print $2}')"
+	zerotierip="$(ip a | grep zt | grep inet | cut -d ' ' -f 6 | cut -d '/' -f 1)"
+	id="$(cat /opt/hypercx-nfv/zt-id)"
+
+	zerotier-cli leave $id
+	join="$(zerotier-cli join $netid)"
+	if [ "$join" = "200 join OK" ]; then
+		echo "Joined to Zerotier network" >> /etc/motd
+		info SD_WAN "Joined to Zerotier network" 2>/dev/null
+		info SD_WAN_NET_ID $netid 2>/dev/null
+		echo "Zerotier id: $netid" >> /etc/motd
+                echo "Zerotier Network: $net" >> /etc/motd
+		info SD_WAN_NET $net 2>/dev/null
+                echo "Zerotier Ip: $zerotierip" >> /etc/motd
+		info SD_WAN_IP $zerotierip 2>/dev/null
+	else
+		echo "Failed to join to Zerotier. Unknown error: $join" >> /etc/motd
+		info SD_WAN "Failed to join to Zerotier. Unknown error: $join" 2>/dev/null
+		info SD_WAN_NET_ID $netid 2>/dev/null
+		info SD_WAN_NET "" 2>/dev/null
+		info SD_WAN_IP "" 2>/dev/null
+	fi
+		echo "$netid" > /opt/hypercx-nfv/zt-id
+}
+
+echo "===========================SD-WAN========================" >> /etc/motd
+if [ -n "$netid" ]; then
+	curl -s https://install.zerotier.com | sudo bash > /dev/null
+	status SD_WAN ENABLED 2>/dev/null
+	echo "SD_WAN ENABLED" >> /etc/motd
+	check_changes
+else
+	apt remove -y zerotier-one
+	apt purge -y zerotier-one
+	echo "SD_WAN DISABLED. No parameter found" >> /etc/motd
+	status SD_WAN DISABLED 2>/dev/null
+	echo "$netid" > /opt/hypercx-nfv/zt-id
+fi
