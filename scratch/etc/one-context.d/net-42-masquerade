@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/2_masquerade  <<EOF
+*/1 * * * * root sleep 6 && /bin/bash /opt/hypercx-nfv/net-42-masquerade
+EOF

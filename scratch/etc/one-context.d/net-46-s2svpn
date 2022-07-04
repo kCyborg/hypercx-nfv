@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/6_s2vpn  <<EOF
+*/1 * * * * root sleep 18 && /bin/bash /opt/hypercx-nfv/net-46-s2svpn
+EOF

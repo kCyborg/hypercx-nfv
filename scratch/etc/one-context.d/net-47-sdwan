@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/7_sdwan  <<EOF
+*/1 * * * * root sleep 21 && /bin/bash /opt/hypercx-nfv/net-47-sdwan
+EOF

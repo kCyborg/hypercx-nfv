@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/3_haproxy  <<EOF
+*/1 * * * * root sleep 9 && /bin/bash /opt/hypercx-nfv/net-43-haproxy
+EOF

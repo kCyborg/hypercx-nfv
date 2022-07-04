@@ -1,13 +1,11 @@
 #!/bin/bash
 
 source /var/lib/./onegate.sh
+source /var/run/one-context/one_env
 
 lb_backends_ports="$LB_BACKENDS_PORTS"
 lb_user="$LB_USER"
 lb_pass="$LB_PASSWORD"
-#lb_backends_ports="$(check "$LB_BACKENDS_PORTS" LB_BACKENDS_PORTS)"
-#lb_user="$(check $LB_USER LB_USER)"
-#lb_pass="$(check $LB_PASSWORD LB_PASSWORD)"
 
 start_haproxy () {
 	systemctl start haproxy
@@ -148,3 +146,5 @@ check_changes () {
 
 echo "=========================LOAD_BALANCER========================" >> /etc/motd
 configure_haproxy
+
+rm /etc/cron.d/3_haproxy

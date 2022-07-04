@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/5_nginx  <<EOF
+*/1 * * * * root sleep 15 && /bin/bash /opt/hypercx-nfv/net-45-nginx
+EOF

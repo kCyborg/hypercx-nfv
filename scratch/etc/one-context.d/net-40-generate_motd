@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/0_motd  <<EOF
+*/1 * * * * root /bin/bash /opt/hypercx-nfv/net-40-generate_motd
+EOF

@@ -1,0 +1,108 @@
+#!/bin/bash
+
+cat > /etc/motd <<EOT
+ _   _                        ______  __  _   _ _______     __
+| | | |_   _ _ __   ___ _ __ / ___\ \/ / | \ | |  ___\ \   / /
+| |_| | | | | '_ \ / _ \ '__| |    \  /  |  \| | |_   \ \ / /
+|  _  | |_| | |_) |  __/ |  | |___ /  \  | |\  |  _|   \ V /
+|_| |_|\__, | .__/ \___|_|   \____/_/\_\ |_| \_|_|      \_/
+       |___/|_|
+
+VERSION: 2.2.1
+EOT
+
+source /var/lib/./onegate.sh
+
+vpn_credentials="$VPN_CREDENTIALS"
+
+for credential in $(echo $vpn_credentials); do
+    user=$(echo $credential | cut -d ':' -f 1)
+    pass=$(echo $credential | cut -d ':' -f 2 | base64)
+    pass_encoded=$(echo $credential | cut -d ':' -f 2 | base64)
+    echo "$user" > /opt/openvpn_credentials
+    echo "$pass" >> /opt/openvpn_credentials
+    echo "$pass_encoded" >> /opt/openvpn_credentials
+done
+
+mkdir -p /opt/.variables
+
+# Get all the custom variables:
+# General variables
+echo "General variables" >> /opt/.variables/variables
+echo "DISK_ID: $DISK_ID" >> /opt/.variables/variables
+echo "IMAGE: $IMAGE" >> /opt/.variables/variables
+echo "ONEGATE_ENDPOINT: $ONEGATE_ENDPOINT" >> /opt/.variables/variables
+echo "SET_HOSTNAME: $SET_HOSTNAME" >> /opt/.variables/variables
+echo "TARGET: $TARGET" >> /opt/.variables/variables
+echo "VMID: $VMID" >> /opt/.variables/variables
+
+# Network variables
+echo " " >> /opt/.variables/variables 
+echo "Network variables" >> /opt/.variables/variables 
+echo "ETH0_CONTEXT_FORCE_IPV4: $ETH0_CONTEXT_FORCE_IPV4" >> /opt/.variables/variables
+echo "ETH0_DNS: $ETH0_DNS" >> /opt/.variables/variables
+echo "ETH0_EXTERNAL: $ETH0_EXTERNAL" >> /opt/.variables/variables
+echo "ETH0_GATEWAY: $ETH0_GATEWAY" >> /opt/.variables/variables
+echo "ETH0_GATEWAY6: $ETH0_GATEWAY6" >> /opt/.variables/variables
+echo "ETH0_IP: $ETH0_IP" >> /opt/.variables/variables
+echo "ETH0_IP6: $ETH0_IP6" >> /opt/.variables/variables
+echo "ETH0_IP6_PREFIX_LENGTH: $ETH0_IP6_PREFIX_LENGTH" >> /opt/.variables/variables
+echo "ETH0_IP6_ULA: $ETH0_IP6_ULA" >> /opt/.variables/variables
+echo "ETH0_MAC: $ETH0_MAC" >> /opt/.variables/variables
+echo "ETH0_MASK: $ETH0_MASK" >> /opt/.variables/variables
+echo "ETH0_METRIC: $ETH0_METRIC" >> /opt/.variables/variables
+echo "ETH0_METRIC6: $ETH0_METRIC6" >> /opt/.variables/variables
+echo "ETH0_MTU: $ETH0_MTU" >> /opt/.variables/variables
+echo "ETH0_NETWORK: $ETH0_NETWORK" >> /opt/.variables/variables
+echo "ETH0_SEARCH_DOMAIN: $ETH0_SEARCH_DOMAIN" >> /opt/.variables/variables
+echo "ETH0_VLAN_ID: $ETH0_VLAN_ID" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP: $ETH0_VROUTER_IP" >> /opt/.variables/variables
+echo "ETH0_VROUTER_IP6: $ETH0_VROUTER_IP6" >> /opt/.variables/variables
+echo "ETH0_VROUTER_MANAGEMENT: $ETH0_VROUTER_MANAGEMENT" >> /opt/.variables/variables
+
+# keepalived variables
+echo " " >> /opt/.variables/variables
+echo "masquerade variables" >> /opt/.variables/variables
+
+# keepalived variables
+echo " " >> /opt/.variables/variables 
+echo "keepalived variables" >> /opt/.variables/variables 
+echo "VROUTER_ID: $VROUTER_ID" >> /opt/keepalived_variables
+echo "VROUTER_KEEPALIVED_ID: $VROUTER_KEEPALIVED_ID" >> /opt/.variables/variables
+
+# HAProxy variables
+echo " " >> /opt/.variables/variables 
+echo "HAProxy variables" >> /opt/.variables/variables 
+echo "LB_BACKENDS_PORTS: $LB_BACKENDS_PORTS" >> /opt/.variables/variables
+echo "LB_PASSWORD: $LB_PASSWORD" >> /opt/.variables/variables
+echo "LB_USER: $LB_USER" >> /opt/.variables/variables
+
+# OpenVPN variables
+echo " " >> /opt/.variables/variables 
+echo "OpenVPN variables" >> /opt/.variables/variables 
+echo "VPN_CREDENTIALS: $VPN_CREDENTIALS" >> /opt/.variables/variables
+
+# nginx variables
+echo " " >> /opt/.variables/variables
+echo "nginx variables" >> /opt/.variables/variables
+echo "L7_SITES_BACKENDS: $L7_SITES_BACKENDS" >> /opt/.variables/variables
+echo "DDOS: $DDOS" >> /opt/.variables/variables
+
+# S2S variables
+echo " " >> /opt/.variables/variables
+echo "S2S variables" >> /opt/.variables/variables
+echo "S2S_HOST_TO_PING: $S2S_HOST_TO_PING" >> /opt/.variables/variables
+echo "S2S_PRE_SHARED_KEY: $S2S_PRE_SHARED_KEY" >> /opt/.variables/variables
+echo "S2S_REMOTE_NETWORKS: $S2S_REMOTE_NETWORKS" >> /opt/.variables/variables
+echo "S2S_REMOTE_SITE_IP: $S2S_REMOTE_SITE_IP" >> /opt/.variables/variables
+
+# SDWAN
+echo " " >> /opt/.variables/variables
+echo "SDWAN variables" >> /opt/.variables/variables
+echo "NETWORK_ID: $NETWORK_ID" >> /opt/.variables/variables
+
+# Root password
+echo " " >> /opt/.variables/variables
+echo "Root variables" >> /opt/.variables/variables
+echo "PASSWORD: $PASSWORD" >> /opt/root_variables
+echo "ROOT_PASSWORD: $ROOT_PASSWORD" >> /opt/root_variables

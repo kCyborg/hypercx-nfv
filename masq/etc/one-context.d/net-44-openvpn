@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source /var/lib/./onegate.sh
+
+vpn_credentials="$VPN_CREDENTIALS"

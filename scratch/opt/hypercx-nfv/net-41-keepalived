@@ -17,6 +17,7 @@
 #--------------------------------------------------------------------------- #
 
 source /var/lib/./onegate.sh
+source /var/run/one-context/one_env
 
 get_context_interfaces() {
     env | grep -E "^ETH[0-9]+_VROUTER_IP=" | sed 's/_.*$//' | sort
@@ -148,3 +149,4 @@ gen_instances
 
 systemctl start keepalived
 
+rm /etc/cron.d/1_keepalived

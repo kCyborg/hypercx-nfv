@@ -4,7 +4,6 @@ source /var/lib/./onegate.sh
 source /var/run/one-context/one_env
 
 vpn_credentials="$VPN_CREDENTIALS"
-#vpn_credentials="$(check "$VPN_CREDENTIALS" VPN_CREDENTIALS)"
 
 start_openvpn()
 {
@@ -16,14 +15,6 @@ stop_openvpn()
     systemctl stop openvpn@server
 }
 
-#configure_easyrsa()
-#{
-#    mkdir -p /etc/openvpn/pki
-#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch init-pki
-#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch build-ca nopass
-#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch gen-req HyperCX nopass
-#    /etc/openvpn/easy_rsa/easyrsa --pki-dir=/etc/openvpn/pki --batch sign-req server HyperCX
-#}
 
 create_openvpn_client()
 {
@@ -42,18 +33,6 @@ create_openvpn_client()
 
 configure_openvpn()
 {
-#    if [ ! -f /etc/openvpn/pki/ca.crt ]; then
-#        configure_easyrsa
-#    fi
-#
-#    if [ ! -f /etc/openvpn/dh2048.pem ]; then
-#        openssl dhparam -out /etc/openvpn/dh2048.pem 2048
-#    fi
-#
-#    if [ ! -f /etc/openvpn/ta.key ]; then
-#        openvpn --genkey --secret /etc/openvpn/ta.key
-#    fi
-
     #Generate part of openvpn conf that is common with the client conf
     cat > /etc/openvpn/server.conf <<EOF
 dev tun
@@ -146,3 +125,4 @@ else
     info OpenVPN "NO ETH0 MAC." 2>/dev/null
 fi
 
+rm /etc/cron.d/4_openvpn

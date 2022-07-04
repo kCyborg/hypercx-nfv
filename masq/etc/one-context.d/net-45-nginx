@@ -23,8 +23,12 @@ ddos="$DDOS"
 #sites_backends="$(check "$L7_SITES_BACKENDS" L7_SITES_BACKENDS)"
 #ddos="$(check $DDOS DDOS)"
 
+echo $sites_backends >> /opt/5-nginx.log
+echo $ddos >> /opt/5-nginx.log
+
 start_nginx () {
     systemctl start nginx
+#    systemctl enable --now nginx
 }
 
 stop_nginx () {

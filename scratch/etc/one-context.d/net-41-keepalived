@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cat > /etc/cron.d/1_keepalived  <<EOF
+*/1 * * * * root sleep 3 && /bin/bash /opt/hypercx-nfv/net-41-keepalived
+EOF

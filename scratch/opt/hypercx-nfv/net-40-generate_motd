@@ -1,5 +1,6 @@
 #!/bin/bash
 
+source /var/run/one-context/one_env
 cat > /etc/motd <<EOT
  _   _                        ______  __  _   _ _______     __
 | | | |_   _ _ __   ___ _ __ / ___\ \/ / | \ | |  ___\ \   / /
@@ -10,3 +11,5 @@ cat > /etc/motd <<EOT
 
 VERSION: 2.2.1
 EOT
+
+rm /etc/cron.d/0_motd

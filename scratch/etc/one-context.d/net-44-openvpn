@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cat > /etc/cron.d/4_openvpn  <<EOF
+*/1 * * * * root sleep 12 && /bin/bash /opt/hypercx-nfv/net-44-openvpn
+EOF
